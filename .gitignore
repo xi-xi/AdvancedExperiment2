@@ -30,9 +30,9 @@ sysinfo.txt
 *.apk
 *.unitypackage
 
-# ignore mp4 file
+# ignore movie file
 *.mp4
-
+*.avi
 
 # ignore png file
 *.png
