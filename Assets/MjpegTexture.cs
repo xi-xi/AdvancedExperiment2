@@ -6,6 +6,7 @@ using System.Collections.Generic;
 public class MjpegTexture : MonoBehaviour {
 	public string MjpegFileName;
 	public float Fps = 30.0f;
+    public Text MessageUI;
 
 	private byte[] _mjpeg_movie_data;
 	private int _currentIndex;
@@ -16,12 +17,23 @@ public class MjpegTexture : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		GameObject.Find ("Text").GetComponent<Text> ().text = "Start";
+        this.ShowMessage("Start");
 		this._currentIndex = 0;
-//		GameObject.Find ("Text").GetComponent<Text> ().text = "Cashed";
 		this._current_texture = new Texture2D (2, 2);
 		this.StartCoroutine (this.LoadMovie());
 	}
+
+    private void ShowMessage(string msg)
+    {
+        if(this.MessageUI != null)
+        {
+            this.MessageUI.text = msg;
+        }
+        else
+        {
+            Debug.Log(msg);
+        }
+    }
 
 	private IEnumerator LoadMovie(){
 		this._movie_loaded = false;
@@ -30,19 +42,17 @@ public class MjpegTexture : MonoBehaviour {
 			Application.streamingAssetsPath,
 			this.MjpegFileName
 		);
-		#elif UNITY_ANDROID
+#elif UNITY_ANDROID
 		var filepath = System.IO.Path.Combine(
 		"jar:file://" + Application.dataPath + "!/assets" ,
 		this.MjpegFileName
 		);
-		#endif
-		GameObject.Find ("Text").GetComponent<Text> ().text = "Loading";
+#endif
+        this.ShowMessage("Loading");
 		using(WWW www = new WWW(this.PathToWwwUrl(filepath))){
 			yield return www;
-			GameObject.Find ("Text").GetComponent<Text> ().text = "Loaded";
 			if (!string.IsNullOrEmpty(www.error)) {
-				GameObject.Find ("Cube").GetComponent<Renderer> ().material.color = new Color (0.0f, 0.0f, 1.0f);
-				GameObject.Find ("Text").GetComponent<Text> ().text = "Error:" + www.error;
+                this.ShowMessage("Error: " + www.error);
 			}
 			this._mjpeg_movie_data = www.bytes;
 			for (int i = 0; i < this._mjpeg_movie_data.Length - 1; ++i) {
@@ -53,7 +63,10 @@ public class MjpegTexture : MonoBehaviour {
 				}
 			}
 			this._movie_loaded = true;
-		}
+            this.ShowMessage("Loaded");
+            this.ShowMessage("SOI: " + this._soi_indices.Count.ToString());
+            this.ShowMessage("EOI: " + this._eoi_indices.Count.ToString());
+        }
 	}
 
 	private bool IsSOI(byte[] data, int index){
@@ -81,18 +94,16 @@ public class MjpegTexture : MonoBehaviour {
 		int bufsize = this._eoi_indices [i] + 1 - this._soi_indices [i] + 1;
 		byte[] buf = new byte[bufsize];
 		System.Buffer.BlockCopy (this._mjpeg_movie_data, this._soi_indices [i], buf, 0, bufsize);
-		var flag = this._current_texture.LoadImage (buf);
-		if (flag) {
-			GameObject.Find ("Cube").GetComponent<Renderer> ().material.color = new Color (0.0f, 1.0f, 0.0f);
-		} else {
-			GameObject.Find ("Cube").GetComponent<Renderer> ().material.color = new Color (1.0f, 0.0f, 0.0f);
-		}
 		this.GetComponent<Renderer> ().material.mainTexture = this._current_texture;
 
 	}
 
 	// Update is called once per frame
 	void Update () {
+        if (!this._movie_loaded)
+        {
+            return;
+        }
 		this.SetMovieFrame (this._currentIndex);
 		int upframe = Mathf.RoundToInt (Time.deltaTime * this.Fps);
 		this._currentIndex += upframe;
